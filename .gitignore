@@ -28,3 +28,6 @@ site/.vite/
 
 # 音声制作の作業ファイル（Premiere プロジェクト・素材・自動保存：重いので上げない）
 soundcreate/
+
+# デザイン元データ（Photoshop：重い・公開不要。書き出し済み画像は public に置く）
+*.psd
