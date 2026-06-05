@@ -1,0 +1,196 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body { height: 100%; }
+
+body {
+  font-family: 'Noto Sans JP', 'Segoe UI', sans-serif;
+  background: #000;
+  color: #e7e9ea;
+  line-height: 1.5;
+  font-size: 15px;
+  display: flex;
+  justify-content: center;
+}
+
+a { color: inherit; text-decoration: none; }
+
+/* カラム：画面いっぱいの高さで左右に縦線、中身は下寄せ中央 */
+.z-column {
+  width: 100%;
+  max-width: 600px;
+  min-height: 100vh;
+  border-left: 1px solid #2f3336;
+  border-right: 1px solid #2f3336;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ===== ヘッダー ===== */
+.z-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  height: 53px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 0 16px;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid #2f3336;
+}
+.z-back {
+  background: none;
+  border: none;
+  color: #e7e9ea;
+  cursor: pointer;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+}
+.z-back svg { width: 20px; height: 20px; display: block; }
+.z-header-title {
+  font-size: 20px;
+  font-weight: 700;
+  flex: 1;
+}
+.z-logo { color: #e7e9ea; }
+.z-logo svg { width: 24px; height: 24px; display: block; }
+
+/* ===== メイン ===== */
+.z-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ===== 主体ポスト ===== */
+.z-post {
+  padding: 12px 16px 4px;
+  border-bottom: 1px solid #2f3336;
+}
+.z-post-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.z-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 18px;
+  color: #fff;
+}
+.z-avatar-yuu { background: #6b7280; }
+.z-avatar-editor { background: #1d1f23; border: 1px solid #2f3336; }
+.z-avatar-r1 { width: 40px; height: 40px; font-size: 16px; background: #7c5e3b; }
+.z-avatar-r2 { width: 40px; height: 40px; font-size: 16px; background: #3b6e7c; }
+.z-avatar-r3 { width: 40px; height: 40px; font-size: 16px; background: #1d1f23; border: 1px solid #2f3336; }
+
+.z-post-user { display: flex; flex-direction: column; line-height: 1.3; flex: 1; }
+.z-name { font-weight: 700; color: #e7e9ea; }
+.z-name-muted { color: #71767b; font-weight: 400; font-size: 14px; }
+.z-handle { color: #71767b; font-size: 14px; }
+.z-more { color: #71767b; font-size: 18px; letter-spacing: 1px; }
+
+.z-post-text {
+  font-size: 18px;
+  line-height: 1.6;
+  margin-bottom: 14px;
+  color: #e7e9ea;
+}
+
+/* 引用カード（編集者の元ポスト） */
+.z-quote {
+  display: block;
+  border: 1px solid #2f3336;
+  border-radius: 16px;
+  padding: 12px;
+  margin-bottom: 14px;
+  transition: background 0.15s;
+}
+.z-quote:hover { background: #080808; }
+.z-quote-head {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+.z-quote .z-avatar-editor { width: 20px; height: 20px; }
+.z-quote-name { font-weight: 700; color: #e7e9ea; }
+.z-quote-handle, .z-quote-time { color: #71767b; }
+.z-quote-sep { color: #71767b; }
+.z-quote-url {
+  color: #1d9bf0;
+  font-size: 15px;
+  word-break: break-all;
+  margin-top: 2px;
+}
+.z-quote:hover .z-quote-url { text-decoration: underline; }
+
+.z-post-time {
+  color: #71767b;
+  font-size: 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid #2f3336;
+}
+.z-views { color: #e7e9ea; font-weight: 700; }
+
+.z-post-actions {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 4px 4px;
+  color: #71767b;
+  font-size: 13px;
+}
+.z-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: default;
+}
+.z-icon {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+.z-count { line-height: 1; }
+
+/* ===== リプライ ===== */
+.z-reply {
+  display: flex;
+  gap: 10px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #2f3336;
+}
+.z-reply-body { flex: 1; }
+.z-reply-head {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 14px;
+  margin-bottom: 2px;
+}
+.z-reply-text { color: #e7e9ea; font-size: 15px; line-height: 1.5; }
+.z-reply-muted { color: #71767b; }
+
+/* ===== 注意書き ===== */
+.z-disclaimer {
+  text-align: center;
+  padding: 16px 16px 24px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: #555;
+}
+.z-disclaimer-fiction { font-size: 10px; }
+
+@media (max-width: 600px) {
+  .z-post-text { font-size: 17px; }
+}

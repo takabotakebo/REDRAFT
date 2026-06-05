@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>完成稿</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Noto+Serif+JP:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+      html, body {
+        margin: 0;
+        height: 100%;
+        background: #0a0a0a;
+        color: #e8e8e8;
+        font-family: 'Noto Serif JP', serif;
+      }
+      .ending {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        padding: 40px 24px;
+        box-sizing: border-box;
+        text-align: center;
+      }
+      .ending h1 {
+        font-size: 38px;
+        font-weight: 700;
+        letter-spacing: 0.2em;
+        margin: 0;
+      }
+      .ending p {
+        font-size: 15px;
+        line-height: 2;
+        color: #bbb;
+        max-width: 600px;
+        margin: 0;
+      }
+
+      /* Booth リンクカード */
+      .booth-card {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        width: 100%;
+        max-width: 240px;
+        padding: 8px;
+        box-sizing: border-box;
+        background: #161616;
+        border: 1px solid #333;
+        border-radius: 8px;
+        text-decoration: none;
+        color: inherit;
+        transition: background 0.15s, border-color 0.15s;
+      }
+      .booth-card:hover { background: #1f1f1f; border-color: #555; }
+      .booth-card-thumb {
+        width: 36px;
+        height: 36px;
+        flex-shrink: 0;
+        border-radius: 6px;
+        background: #fc4d50;  /* BOOTH カラー */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-family: 'Noto Sans JP', sans-serif;
+        font-weight: 700;
+        font-size: 9px;
+        letter-spacing: 0.05em;
+      }
+      .booth-card-body { text-align: left; min-width: 0; }
+      .booth-card-title {
+        font-family: 'Noto Sans JP', sans-serif;
+        font-size: 12px;
+        font-weight: 700;
+        color: #f1f1f1;
+        margin: 0 0 2px;
+      }
+      .booth-card-url {
+        font-family: 'Noto Sans JP', sans-serif;
+        font-size: 10px;
+        color: #888;
+        margin: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      /* X でシェア（テキストリンク風） */
+      .share-x {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: transparent;
+        color: #bbb;
+        font-family: 'Noto Sans JP', sans-serif;
+        font-size: 17px;
+        text-decoration: none;
+        transition: color 0.15s;
+      }
+      .share-x:hover { color: #fff; }
+      .share-x svg { width: 22px; height: 22px; }
+
+      /* 上グループ：画面中央 */
+      .ending-center {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 24px;
+      }
+      /* 下グループ：画面下部 */
+      .ending-bottom {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 14px;
+        padding-bottom: 24px;
+      }
+      /* 校了の一文は大きく */
+      .ending-result {
+        font-size: 27px !important;
+        color: #e8e8e8 !important;
+      }
+      .ending-found { margin: 0; }
+
+      /* クレジット（右下に小さく固定） */
+      .ending-credit {
+        position: fixed;
+        left: 24px;
+        bottom: 64px;
+        text-align: left;
+        font-family: 'Noto Sans JP', sans-serif;
+        font-size: 13px;
+        line-height: 1.7;
+        color: #666;
+      }
+      .ending-credit-title {
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        color: #888;
+        margin-bottom: 3px;
+      }
+      /* クレジット内の X リンク */
+      .ending-credit-paren { color: #666; }
+      .ending-credit-x {
+        color: #888;
+        text-decoration: none;
+        transition: color 0.15s;
+      }
+      .ending-credit-x:hover { color: #fff; }
+      .ending-credit-x-icon {
+        width: 11px;
+        height: 11px;
+        vertical-align: middle;
+        margin-right: 2px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="ending">
+      <!-- 上グループ：画面中央 -->
+      <div class="ending-center">
+        <h1>完成稿</h1>
+        <p class="ending-result">この原稿は、校了となりました。</p>
+        <!-- X でシェア（note URL は仮。あとで差し替え） -->
+        <a
+          class="share-x"
+          id="share-x"
+          href="#"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+          </svg>
+          シェアする
+        </a>
+      </div>
+
+      <!-- 下グループ：画面下部 -->
+      <div class="ending-bottom">
+        <p class="ending-found">とある出版物が見つかったようです。</p>
+        <!-- Booth リンクカード（URL は仮。あとで差し替え） -->
+        <a class="booth-card" href="https://booth.pm/ja/items/8341380" target="_blank" rel="noopener noreferrer">
+          <div class="booth-card-thumb">BOOTH</div>
+          <div class="booth-card-body">
+            <p class="booth-card-title">RE-DRAFT</p>
+            <p class="booth-card-url">booth.pm/ja/items/8341380</p>
+          </div>
+        </a>
+      </div>
+    </div>
+
+    <!-- クレジット（右下に小さく） -->
+    <div class="ending-credit">
+      <div class="ending-credit-title">CREDIT</div>
+      <div>Planning：KAF<span class="ending-credit-paren"> ( <a class="ending-credit-x" href="https://x.com/KAF_KA386" target="_blank" rel="noopener noreferrer"><svg class="ending-credit-x-icon" viewBox="0 0 24 24" fill="currentColor" aria-label="X"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>アカウント</a> )</span></div>
+      <div>KV Design：PAI</div>
+    </div>
+
+    <script>
+      // X 投稿文（note の URL は仮。あとで差し替え）
+      var noteUrl = 'https://note.com/';
+      var text = 'RE:DRAFT\n──────────\nこの原稿を校了しました。\n#REDRAFT';
+      var href = 'https://twitter.com/intent/tweet?text=' +
+        encodeURIComponent(text) + '&url=' + encodeURIComponent(noteUrl);
+      document.getElementById('share-x').setAttribute('href', href);
+    </script>
+  </body>
+</html>

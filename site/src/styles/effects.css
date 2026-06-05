@@ -1,0 +1,454 @@
+/* テキスト選択風ハイライト：選択された文字（右→左に増えていく） */
+.char-selected {
+  background-color: #9b0d12;
+  color: #fff;
+}
+
+/* 夢文の選択マーカー：文字サイズがバラついても、行全体の高さに揃えて赤帯を引く。
+   各文字に固定高さの背景帯を直接敷き、文字はその上に重ねる */
+.char-selected.dream-mark {
+  position: relative;
+  background-color: transparent;
+  color: #fff;
+  z-index: 0;
+}
+.char-selected.dream-mark::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  /* 全文字 vertical-align:middle で中央が揃うので、固定高さの帯で行全体をカバーする */
+  top: 50%;
+  height: 32px;
+  transform: translateY(-50%);
+  background-color: #9b0d12;
+  z-index: -1;            /* 文字の背後・親pより前 */
+}
+
+/* 行まるごと選択（起点より上の行）：行末の余白まで反転 */
+.line-selected {
+  background-color: #9b0d12;
+  color: #fff;
+}
+
+/* 白マーカー（videoFinale の削除時） */
+.line-selected.line-white {
+  background-color: transparent;
+  color: #000;
+  /* 行ごとに分かれた白帯（本文1行ぶん＝約25.7px ごとに白＋隙間） */
+  background-image: repeating-linear-gradient(
+    to bottom,
+    #fff 0,
+    #fff 23px,
+    transparent 23px,
+    transparent 25.7px
+  );
+}
+.spacer-marking-white {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    #fff 0,
+    #fff 23px,
+    transparent 23px,
+    transparent 25.7px
+  );
+}
+
+/* ─── videoFinale：画面UI全体がじんわりマーカー色（暗い赤）に染まる ───────── */
+/* 背景・ページを同じタイミングで変化させる（darkening と同じ書き方） */
+.app.video-finale .doc-page {
+  background-color: #5a0a0e;
+  transition: background-color 2.5s ease-in;
+}
+.app.video-finale .doc-paper {
+  background-color: #3a060a;
+  transition: background-color 2.5s ease-in;
+}
+.app.video-finale .doc-body {
+  color: #f3d0d2;
+  transition: color 2.5s ease-in;
+}
+.app.video-finale .doc-header,
+.app.video-finale .doc-toolbar,
+.app.video-finale .comment-panel,
+.app.video-finale .stage-outline,
+.app.video-finale .control-panel {
+  background-color: #3a060a;
+  transition: background-color 2.5s ease-in;
+}
+.app.video-finale .doc-header *,
+.app.video-finale .doc-toolbar *,
+.app.video-finale .stage-outline *,
+.app.video-finale .comment-panel * {
+  color: #f3d0d2 !important;
+  transition: color 2.5s ease-in;
+}
+/* 指摘ボタン：白地・黒文字・少しずつ大きくなりながら震える＋グリッチ */
+.app.video-finale .btn-accuse {
+  background: #fff !important;
+  color: #000 !important;
+  transform-origin: center;
+  /* 震え（速い）＋ 徐々に拡大（ゆっくり）を重ねる */
+  animation: accuse-shake 0.09s linear infinite, accuse-grow 8s ease-in forwards;
+}
+@keyframes accuse-shake {
+  0%   { translate: 0 0; rotate: 0deg; filter: none; }
+  20%  { translate: -3px 2px; rotate: -1deg; filter: hue-rotate(40deg) saturate(2); }
+  40%  { translate: 2px -2px; rotate: 1deg; filter: invert(1); }
+  60%  { translate: -2px -1px; rotate: -1deg; filter: none; }
+  80%  { translate: 3px 1px; rotate: 1deg; filter: invert(1) saturate(3); }
+  100% { translate: 0 0; rotate: 0deg; filter: none; }
+}
+@keyframes accuse-grow {
+  from { scale: 1; }
+  to   { scale: 1.7; }
+}
+
+/* 空白ページのマーカー：下から上へ、行ごとに分かれた赤帯が伸びていく */
+.spacer-marking {
+  /* 本文1行ぶん（約25.7px）ごとに赤帯＋わずかな隙間を繰り返す（パターンは固定） */
+  background-image: repeating-linear-gradient(
+    to bottom,
+    #9b0d12 0,
+    #9b0d12 23px,
+    transparent 23px,
+    transparent 25.7px
+  );
+  /* clip-path で下→上に現すと、行パターンを伸ばさずに塗り上がる */
+  animation: spacer-mark-fill 0.6s steps(60, end) forwards;
+}
+@keyframes spacer-mark-fill {
+  from { clip-path: inset(100% 0 0 0); }
+  to   { clip-path: inset(0 0 0 0); }
+}
+
+/* 指摘アニメ：画像にもテキストと同色（#9b0d12）の選択マーカーを重ねる */
+.image-mark-wrap {
+  position: relative;
+  display: inline-block;
+  line-height: 0;
+}
+.image-mark-overlay {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #9b0d12;
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+/* ─── 血でにじむ（薄いグレーの文字が血色へにじむ） ───────────────────────── */
+.blood-bleed {
+  animation: blood-bleed-anim 2.2s ease-in forwards;
+}
+@keyframes blood-bleed-anim {
+  0%   { color: #888; text-shadow: none; }
+  40%  { color: #7a0a0a; text-shadow: 0 0 1px rgba(122,10,10,0.6); }
+  100% {
+    color: #6a0000;
+    text-shadow:
+      0 0 2px rgba(120,0,0,0.9),
+      0 1px 3px rgba(120,0,0,0.7),
+      0 2px 6px rgba(100,0,0,0.5);
+  }
+}
+
+/* ─── 血が下へ垂れる（短い語の各文字に滴る） ─────────────────────────────── */
+.blood-drip {
+  position: relative;
+  color: #8b0000;
+  font-weight: bold;
+}
+.blood-drip::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  /* 文字の下端から切れ目なく垂れる。少し上に食い込ませて文字と繋げる */
+  top: 0.9em;
+  width: 2px;
+  height: 0;
+  background: linear-gradient(to bottom, #8b0000 0%, #8b0000 60%, rgba(139,0,0,0));
+  border-radius: 0 0 2px 2px;
+  transform: translateX(-50%);
+  animation: blood-drip-anim 2.5s ease-in forwards;
+}
+@keyframes blood-drip-anim {
+  0%   { height: 0; opacity: 0; }
+  20%  { opacity: 1; }
+  100% { height: 1.4em; opacity: 0.85; }
+}
+
+/* ─── 黒塗り（書いた文字が連続した黒帯に変わる。左→右に塗られる） ─────────── */
+.redacted-bar {
+  position: relative;
+  display: inline-block;
+  color: transparent;        /* 文字を隠す */
+  user-select: none;
+}
+.redacted-bar::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1.5em;
+  transform: translateY(-50%);
+  background-color: #111;
+  border-radius: 1px;
+  /* 左→右に塗られる（スピードはマーカー＝strike-fast と同じ 0.06s） */
+  animation: redact-draw 0.06s linear forwards;
+}
+@keyframes redact-draw {
+  from { clip-path: inset(0 100% 0 0); }
+  to   { clip-path: inset(0 0 0 0); }
+}
+/* 紙の領域を超えて右へ伸びる（短め／長め）。短い文でも紙端を確実に超える量にする */
+.redacted-overflow::after { right: -600px; }
+.redacted-overflow-long::after { right: -1000px; }
+/* コメント欄も突き抜けて画面右端を超える長さ（紙と一緒にスクロールする） */
+.redacted-screen::after { right: -1600px; }
+
+/* ─── 文字化け侵食：化けた1文字の出現アニメ ───────────────────────────── */
+.glitch-char {
+  display: inline-block;
+  color: #c0392b;
+  animation: glitch-pop 0.18s steps(2, end);
+}
+@keyframes glitch-pop {
+  0%   { transform: translateY(-2px) skewX(-12deg); opacity: 0.2; filter: blur(1px); }
+  50%  { transform: translateY(1px) skewX(8deg);    opacity: 1;   }
+  100% { transform: none; opacity: 1; filter: none; }
+}
+
+/* 白文字（選択で読める） */
+.hidden-text {
+  color: transparent !important;
+  user-select: text;
+  cursor: text;
+}
+
+/* ─── 打ち消し線が左→右に引かれる（正常文に後から線が入る） ───────────────── */
+.strike-anim {
+  position: relative;
+  display: inline-block;  /* ::after の幅(100%)を文字幅に確定させ、塗り残しを防ぐ */
+  color: #aaa;
+  transition: color 0.1s ease 0.1s;
+}
+.strike-anim::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  height: 1px;
+  width: 0;
+  background: currentColor;
+  animation: strike-draw 0.12s linear forwards;
+}
+@keyframes strike-draw {
+  from { width: 0; }
+  to   { width: 100%; }
+}
+
+/* この異変限定：何度も乱暴に塗り潰したような取り消し（strikeThroughAll 用） */
+.strike-anim.strike-fast {
+  transition: color 0.04s ease;
+}
+.strike-anim.strike-fast::after {
+  /* 1本線ではなく、角度の違う複数の線を重ねて「ぐちゃぐちゃに塗り消した」見た目にする。
+     幅は最初から 100% に固定し、clip-path で左→右に現すことで末尾の塗り残しを防ぐ */
+  top: 0;
+  height: 100%;
+  width: 100%;
+  background:
+    repeating-linear-gradient(2deg,  transparent 0 2px, #1a1a1a 2px 4px, transparent 4px 7px),
+    repeating-linear-gradient(-3deg, transparent 0 3px, #1a1a1a 3px 5px, transparent 5px 9px),
+    repeating-linear-gradient(1deg,  transparent 0 4px, #1a1a1a 4px 6px, transparent 6px 11px);
+  animation: strike-scribble 0.06s linear forwards;
+}
+@keyframes strike-scribble {
+  from { clip-path: inset(0 100% 0 0); }
+  to   { clip-path: inset(0 0 0 0); }
+}
+
+/* ─── 紙面が滲むように黒くなる（背景黒・文字白へ。ゆっくり変化） ─────────────── */
+.app.darkening .doc-page {
+  background-color: #0a0a0a;
+  transition: background-color 3.5s ease-in;
+}
+.app.darkening .doc-body {
+  color: #f5f5f5;
+  transition: color 3.5s ease-in;
+}
+/* 紙面の周囲（スクロール背景）も少し沈ませる */
+.app.darkening .doc-paper {
+  background-color: #1a1a1a;
+  transition: background-color 3.5s ease-in;
+}
+
+/* UI 全体も暗転させる（ヘッダー・ツールバー・コメント欄・アウトライン・コントロール） */
+.app.darkening .doc-header,
+.app.darkening .doc-toolbar,
+.app.darkening .comment-panel,
+.app.darkening .stage-outline,
+.app.darkening .control-panel {
+  background-color: #0d0d0d;
+  border-color: #333;
+  transition: background-color 3.5s ease-in, color 3.5s ease-in, border-color 3.5s ease-in;
+}
+.app.darkening .doc-header *,
+.app.darkening .doc-toolbar *,
+.app.darkening .comment-panel *,
+.app.darkening .stage-outline *,
+.app.darkening .control-panel * {
+  color: #d8d8d8 !important;
+  border-color: #333 !important;
+  transition: color 3.5s ease-in, border-color 3.5s ease-in;
+}
+/* コメントカードなどの白背景も沈ませる */
+.app.darkening .comment-card {
+  background-color: #161616;
+  transition: background-color 3.5s ease-in;
+}
+
+/* ─── ノイズ（章リセット直前の一瞬のグリッチ） ───────────────────────────── */
+.noise-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(
+      0deg,
+      rgba(0, 0, 0, 0.25) 0px,
+      rgba(0, 0, 0, 0.25) 1px,
+      rgba(255, 255, 255, 0.15) 2px,
+      rgba(255, 255, 255, 0.15) 3px
+    );
+  mix-blend-mode: difference;
+  animation: noise-flicker 0.2s steps(2, end) infinite;
+}
+@keyframes noise-flicker {
+  0%   { opacity: 0.85; transform: translateX(0); }
+  25%  { opacity: 0.5;  transform: translateX(-3px); }
+  50%  { opacity: 0.95; transform: translateX(2px); }
+  75%  { opacity: 0.4;  transform: translateX(-1px); }
+  100% { opacity: 0.8;  transform: translateX(3px); }
+}
+
+/* 画像プレースホルダー */
+.image-placeholder {
+  width: 100%;
+  max-width: 480px;
+  height: 200px;
+  background: #e8eaed;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9aa0a6;
+  font-size: 13px;
+  font-family: 'Noto Sans JP', sans-serif;
+}
+
+/* ─── ビデオ通話中のヴィネット（画面周辺を大きく暗くする） ───────────────── */
+.video-vignette {
+  position: fixed;
+  inset: 0;
+  z-index: 8900;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.55) 85%, rgba(0,0,0,0.8) 100%);
+  animation: vignette-in 1.2s ease-out forwards;
+}
+@keyframes vignette-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ─── ビデオ通話ポップアップ（画面右上に固定） ───────────────────────────── */
+.video-call-popup {
+  position: fixed;
+  top: 64px;
+  right: 24px;
+  width: 440px;
+  background: #202124;
+  border-radius: 10px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+  z-index: 9000;
+  animation: video-popup-in 0.35s ease-out;
+}
+.video-call-popup.ending {
+  animation: video-popup-out 0.15s ease-in forwards;
+}
+@keyframes video-popup-in {
+  from { transform: translateY(-12px) scale(0.96); opacity: 0; }
+  to   { transform: translateY(0) scale(1); opacity: 1; }
+}
+@keyframes video-popup-out {
+  0%   { transform: scale(1); opacity: 1; filter: none; }
+  60%  { transform: scaleY(0.04) scaleX(1); opacity: 1; filter: brightness(2); }
+  100% { transform: scaleY(0) scaleX(0.2); opacity: 0; }
+}
+.video-call-screen {
+  width: 100%;
+  height: 280px;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.video-call-screen img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+/* 05 の後：黒画面＋ノイズエフェクト */
+.video-call-noise {
+  width: 100%;
+  height: 100%;
+  background-color: #000;
+  background-image: repeating-linear-gradient(
+    0deg,
+    rgba(255,255,255,0.10) 0px,
+    rgba(255,255,255,0.10) 1px,
+    rgba(0,0,0,0) 2px,
+    rgba(0,0,0,0) 3px
+  );
+  background-size: 100% 4px;
+  animation: video-noise-flicker 0.12s steps(2, end) infinite;
+}
+@keyframes video-noise-flicker {
+  0%   { background-position: 0 0; opacity: 0.9; }
+  50%  { background-position: 0 -2px; opacity: 1; }
+  100% { background-position: 0 2px; opacity: 0.85; }
+}
+.video-call-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  color: #bbb;
+  font-size: 13px;
+  font-family: 'Noto Sans JP', sans-serif;
+}
+.video-call-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(255, 255, 255, 0.2);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: video-spin 0.8s linear infinite;
+}
+@keyframes video-spin { to { transform: rotate(360deg); } }
+.video-call-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: #2b2c2e;
+  color: #e8eaed;
+  font-family: 'Noto Sans JP', sans-serif;
+}
+.video-call-name { font-size: 14px; font-weight: 700; }
+.video-call-status { font-size: 11px; color: #9aa0a6; }

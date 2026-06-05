@@ -1,0 +1,30 @@
+# 依存パッケージ
+node_modules/
+
+# ビルド成果物（Cloudflare が build 時に生成するので上げない）
+dist/
+site/dist/
+
+# ログ
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# エディタ・OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# 環境変数
+.env
+.env.local
+.env.*.local
+
+# Vite キャッシュ
+.vite/
+site/.vite/
+
+# 音声制作の作業ファイル（Premiere プロジェクト・素材・自動保存：重いので上げない）
+soundcreate/
