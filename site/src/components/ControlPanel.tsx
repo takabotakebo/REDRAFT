@@ -7,7 +7,6 @@ type Props = {
   phase: Phase
   isFinalStage: boolean
   anomalyMissed: boolean
-  onStart: () => void
   onAccuse: () => void
   onConfirm: () => void
   onRetry: () => void
@@ -18,7 +17,7 @@ type Props = {
   accuseDisabled?: boolean
 }
 
-export function ControlPanel({ phase, isFinalStage, anomalyMissed, onStart, onAccuse, onConfirm, onRetry, onReset, onRestartStage, showShare, accuseGlitch, accuseDisabled }: Props) {
+export function ControlPanel({ phase, isFinalStage, anomalyMissed, onAccuse, onConfirm, onRetry, onReset, onRestartStage, showShare, accuseGlitch, accuseDisabled }: Props) {
   const g = useGlitch()
   const shareText = encodeURIComponent('指摘し続けました。原稿は完成しましたか？ #REDRAFT')
   const shareUrl = encodeURIComponent(window.location.origin + '/intro.html')
@@ -48,11 +47,7 @@ export function ControlPanel({ phase, isFinalStage, anomalyMissed, onStart, onAc
 
       {/* 中央：状態によって切り替え */}
       <div className="control-center">
-        {phase === 'idle' && (
-          <button className="btn-start" onClick={onStart}>
-            {glitchText('原稿を読み始める', g)}
-          </button>
-        )}
+        {/* phase === 'idle' のときは下部にボタンを出さない（起動ポップアップで開始する） */}
         {phase === 'writing' && (
           <button className={`btn-accuse${accuseGlitch ? ' glitching' : ''}`} onClick={onAccuse} disabled={accuseDisabled}>
             {glitchText('指摘する', g)}

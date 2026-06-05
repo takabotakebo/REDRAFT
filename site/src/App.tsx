@@ -632,7 +632,6 @@ export default function App() {
         phase={state.phase}
         isFinalStage={state.currentStageIndex === stages.length - 1}
         anomalyMissed={state.anomalyMissed}
-        onStart={handleStart}
         onAccuse={handleAccuse}
         onConfirm={handleConfirm}
         onRetry={handleRetry}
@@ -643,6 +642,16 @@ export default function App() {
         accuseDisabled={state.accuseDisabled}
       />
     </div>
+    {state.phase === 'idle' && (
+      <div className="open-doc-overlay">
+        <div className="open-doc-popup" role="dialog" aria-modal="true">
+          <p className="open-doc-text">共有リンクでアクセスしています。</p>
+          <button className="open-doc-btn" onClick={handleStart}>
+            ドキュメントを開く
+          </button>
+        </div>
+      </div>
+    )}
     {showNoise && <div className="noise-overlay" aria-hidden="true" />}
     {(state.videoCallState === 'on' || state.videoCallState === 'ending') && (
       <div className="video-vignette" aria-hidden="true" />
