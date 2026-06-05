@@ -648,17 +648,19 @@ export default function App() {
       <div className="video-vignette" aria-hidden="true" />
     )}
     <VideoCallPopup state={state.videoCallState} frame={state.videoFrame} />
-    <DebugPanel
-      state={state}
-      onJumpToStage={debugJumpToStage}
-      onJumpToEnding={() => { engine.stopEngine(); debugJumpToEnding() }}
-      onReserveAnomaly={engine.reserveAnomaly}
-      onStopEngine={engine.stopEngine}
-      onStartStage={engine.startStage}
-      onPause={engine.pause}
-      onResume={engine.resumeFromCurrent}
-      onSetSpeed={engine.setSpeed}
-    />
+    {import.meta.env.DEV && (
+      <DebugPanel
+        state={state}
+        onJumpToStage={debugJumpToStage}
+        onJumpToEnding={() => { engine.stopEngine(); debugJumpToEnding() }}
+        onReserveAnomaly={engine.reserveAnomaly}
+        onStopEngine={engine.stopEngine}
+        onStartStage={engine.startStage}
+        onPause={engine.pause}
+        onResume={engine.resumeFromCurrent}
+        onSetSpeed={engine.setSpeed}
+      />
+    )}
     </GlitchContext.Provider>
   )
 }
