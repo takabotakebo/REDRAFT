@@ -666,6 +666,83 @@ body {
 }
 .btn-accuse:disabled:hover { background: #c4c7c5; }
 
+/* 指摘する＋一時停止を横並びにするグループ。
+   .control-center > button の固定幅(280px)を回避するため、グループに幅を持たせる */
+.control-center .accuse-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.control-center .accuse-group .btn-accuse {
+  width: 280px;
+  box-sizing: border-box;
+}
+/* 一時停止／再開ボタン（指摘するの右） */
+.btn-pause {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #f1f3f4;
+  border: 1px solid #dadce0;
+  border-radius: 4px;
+  color: #5f6368;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.btn-pause:hover { background: #e8eaed; color: #3c4043; }
+.btn-pause.paused { border-color: #1a73e8; color: #1a73e8; }
+.btn-pause svg { width: 18px; height: 18px; display: block; }
+
+/* ===== 一時停止の画面全体アニメーション ===== */
+.pause-fx {
+  position: fixed;
+  inset: 0;
+  z-index: 2500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  background: rgba(15, 17, 20, 0);
+  animation: pause-fx-bg 1.4s ease forwards;
+}
+@keyframes pause-fx-bg {
+  0%   { background: rgba(15, 17, 20, 0); }
+  18%  { background: rgba(15, 17, 20, 0.42); }
+  72%  { background: rgba(15, 17, 20, 0.42); }
+  100% { background: rgba(15, 17, 20, 0); }
+}
+.pause-fx-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  color: #fff;
+  font-family: 'Noto Sans JP', sans-serif;
+  transform: scale(0.9);
+  opacity: 0;
+  animation: pause-fx-card 1.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+@keyframes pause-fx-card {
+  0%   { opacity: 0; transform: scale(0.86); }
+  18%  { opacity: 1; transform: scale(1); }
+  72%  { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.04); }
+}
+.pause-fx-icon {
+  width: 56px;
+  height: 56px;
+  filter: drop-shadow(0 2px 10px rgba(0, 0, 0, 0.5));
+}
+.pause-fx-label {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+
 /* ビデオ通話ボタン：通話中は赤枠で点滅 */
 .doc-header-btn-video.active {
   border-color: #d93025;

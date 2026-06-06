@@ -12,12 +12,14 @@ type Props = {
   onRetry: () => void
   onReset: () => void
   onRestartStage: () => void
+  paused: boolean
+  onPauseToggle: () => void
   showShare: boolean
   accuseGlitch?: boolean
   accuseDisabled?: boolean
 }
 
-export function ControlPanel({ phase, isFinalStage, anomalyMissed, onAccuse, onConfirm, onRetry, onReset, onRestartStage, showShare, accuseGlitch, accuseDisabled }: Props) {
+export function ControlPanel({ phase, isFinalStage, anomalyMissed, onAccuse, onConfirm, onRetry, onReset, onRestartStage, paused, onPauseToggle, showShare, accuseGlitch, accuseDisabled }: Props) {
   const g = useGlitch()
   const shareText = encodeURIComponent('指摘し続けました。原稿は完成しましたか？ #REDRAFT')
   const shareUrl = encodeURIComponent(window.location.origin + '/intro.html')
@@ -49,9 +51,23 @@ export function ControlPanel({ phase, isFinalStage, anomalyMissed, onAccuse, onC
       <div className="control-center">
         {/* phase === 'idle' のときは下部にボタンを出さない（起動ポップアップで開始する） */}
         {phase === 'writing' && (
-          <button className={`btn-accuse${accuseGlitch ? ' glitching' : ''}`} onClick={onAccuse} disabled={accuseDisabled}>
-            {glitchText('指摘する', g)}
-          </button>
+          <div className="accuse-group">
+            <button className={`btn-accuse${accuseGlitch ? ' glitching' : ''}`} onClick={onAccuse} disabled={accuseDisabled}>
+              {glitchText('指摘する', g)}
+            </button>
+            <button
+              className={`btn-pause${paused ? ' paused' : ''}`}
+              onClick={onPauseToggle}
+              aria-label={paused ? '再開' : '一時停止'}
+              title={paused ? '再開' : '一時停止'}
+            >
+              {paused ? (
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+              ) : (
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>
+              )}
+            </button>
+          </div>
         )}
         {phase === 'stage_written' && !anomalyMissed && isFinalStage && (
           <button className="btn-confirm" onClick={() => { window.location.href = 'ending.html' }}>

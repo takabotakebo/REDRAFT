@@ -107,6 +107,38 @@ export default function App() {
 
   const engine = useTypingEngine(stages, callbacks)
 
+  // ─── 一時停止／再開 ───────────────────────────────────────────────────────
+  const [paused, setPaused] = useState(false)
+  // 「一時停止しました」の画面全体アニメーション表示フラグ
+  const [showPausedFx, setShowPausedFx] = useState(false)
+
+  const handlePauseToggle = useCallback(() => {
+    const now = `${String(new Date().getHours()).padStart(2, '0')}:${String(new Date().getMinutes()).padStart(2, '0')}`
+    // 副作用は更新関数の外で実行する（StrictMode の二重呼び出しによる二重投稿を防ぐ）
+    if (paused) {
+      engine.resumeFromCurrent()
+      addComment({ id: `pause-resume-${Date.now()}`, editorText: '執筆を再開してください', timestamp: now })
+      setPaused(false)
+    } else {
+      engine.pause()
+      setShowPausedFx(true)
+      addComment({ id: `pause-stop-${Date.now()}`, editorText: '少し書くのを止めてください', timestamp: now })
+      setPaused(true)
+    }
+  }, [paused, engine, addComment])
+
+  // 一時停止のオーバーレイは一定時間で自動的にフェードアウトさせる
+  useEffect(() => {
+    if (!showPausedFx) return
+    const t = setTimeout(() => setShowPausedFx(false), 1400)
+    return () => clearTimeout(t)
+  }, [showPausedFx])
+
+  // 書き込み中以外（章確定・指摘・ミス・終了など）に移ったら一時停止状態を解除
+  useEffect(() => {
+    if (state.phase !== 'writing' && paused) setPaused(false)
+  }, [state.phase, paused])
+
   // ─── 開始ボタン ──────────────────────────────────────────────────────────
   const handleStart = useCallback(() => { beginGame() }, [beginGame])
 
@@ -428,6 +460,8 @@ export default function App() {
   }, [state.activeAnomalyId, vsReady, vsTypeLines, setVideoCallState, setVideoFinale, setVideoFrame, addBlock, updateBlock])
 
   const handleAccuse = useCallback(() => {
+    // 指摘すると巻き戻って自動再開するため、一時停止表示も解除する
+    setPaused(false)
     const s = stateRef.current
     console.group('%c[ACCUSE] 指摘ボタン押下', 'color:#e91e63;font-weight:bold')
     console.log('phase:', s.phase)
@@ -637,6 +671,8 @@ export default function App() {
         onRetry={handleRetry}
         onReset={handleReset}
         onRestartStage={handleRestartStage}
+        paused={paused}
+        onPauseToggle={handlePauseToggle}
         showShare={showShare}
         accuseGlitch={accuseBtnGlitch}
         accuseDisabled={state.accuseDisabled}
@@ -649,6 +685,14 @@ export default function App() {
           <button className="open-doc-btn" onClick={handleStart}>
             ドキュメントを開く
           </button>
+        </div>
+      </div>
+    )}
+    {showPausedFx && (
+      <div className="pause-fx" aria-hidden="true">
+        <div className="pause-fx-card">
+          <svg className="pause-fx-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>
+          <span className="pause-fx-label">一時停止しました</span>
         </div>
       </div>
     )}
