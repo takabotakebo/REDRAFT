@@ -599,14 +599,17 @@ body {
   text-overflow: ellipsis;
 }
 
-/* 修正履歴ボタン：中央ボタンの左に置く小さめのボタン（幅固定の対象外） */
-.control-center .btn-history {
-  width: auto;
-  flex-shrink: 0;
+/* 修正履歴ボタン：中央ボタン（幅280px）の左に絶対配置。
+   「指摘する」を画面中央に保ったまま、その左隣に出す。
+   中央(50%)から 中央ボタン半幅(140px)＋間隔(10px) ぶん左に右端を合わせる */
+.btn-history {
+  position: absolute;
+  top: 50%;
+  right: calc(50% + 150px);
+  transform: translateY(-50%);
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin-right: 10px;
   padding: 9px 16px;
   background: #f1f3f4;
   border: 1px solid #dadce0;
@@ -616,10 +619,11 @@ body {
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
+  white-space: nowrap;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
-.control-center .btn-history:hover { background: #e8eaed; color: #3c4043; }
-.control-center .btn-history svg { width: 16px; height: 16px; display: block; }
+.btn-history:hover { background: #e8eaed; color: #3c4043; }
+.btn-history svg { width: 16px; height: 16px; display: block; }
 
 .btn-placeholder {
   display: inline-block;
@@ -689,19 +693,13 @@ body {
 .btn-accuse:disabled:hover { background: #c4c7c5; }
 
 /* 指摘する＋一時停止を横並びにするグループ。
-   .control-center > button の固定幅(280px)を回避するため、グループに幅を持たせる */
-.control-center .accuse-group {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.control-center .accuse-group .btn-accuse {
-  width: 280px;
-  box-sizing: border-box;
-}
-/* 一時停止／再開ボタン（指摘するの右） */
+   一時停止／修正履歴は「指摘する」の左右に絶対配置し、指摘するを中央に保つ */
+/* 一時停止／再開ボタン（指摘するの右に絶対配置） */
 .btn-pause {
-  flex-shrink: 0;
+  position: absolute;
+  top: 50%;
+  left: calc(50% + 150px); /* 中央ボタン半幅(140px)＋間隔(10px) ぶん右 */
+  transform: translateY(-50%);
   width: 40px;
   height: 40px;
   display: inline-flex;
