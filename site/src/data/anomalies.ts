@@ -439,9 +439,9 @@ export const anomalies: Anomaly[] = [
   triggerAfterLineId: 's3-06',
     probability: 0.5,
     blocks: [
-      { type: 'text', id: 'a3-21-1', text: '言え', style: { fontSize: '9em', color: '#8b0000', fontWeight: 'bold', lineHeight: '0.7' } },
-      { type: 'text', id: 'a3-21-2', text: 'なか', style: { fontSize: '9em', color: '#8b0000', fontWeight: 'bold', lineHeight: '0.7' } },
-      { type: 'text', id: 'a3-21-3', text: 'った', style: { fontSize: '9em', color: '#8b0000', fontWeight: 'bold', lineHeight: '0.7' } },
+      { type: 'text', id: 'a3-21-1', text: '言え', className: 'huge-red-text', style: { fontSize: '9em', color: '#8b0000', fontWeight: 'bold', lineHeight: '0.7' } },
+      { type: 'text', id: 'a3-21-2', text: 'なか', className: 'huge-red-text', style: { fontSize: '9em', color: '#8b0000', fontWeight: 'bold', lineHeight: '0.7' } },
+      { type: 'text', id: 'a3-21-3', text: 'った', className: 'huge-red-text', style: { fontSize: '9em', color: '#8b0000', fontWeight: 'bold', lineHeight: '0.7' } },
     ],
     commentEffects: [{ id: 'c-a3-21', editorText: '文字サイズと文字色が不自然に変化しています。', timestamp: '' }],
   },

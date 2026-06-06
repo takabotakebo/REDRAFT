@@ -7,6 +7,9 @@ import { ControlPanel } from './components/ControlPanel'
 import { StageOutline } from './components/StageOutline'
 import { DebugPanel } from './components/DebugPanel'
 import { VideoCallPopup } from './components/VideoCallPopup'
+import { ArchivePanel } from './components/ArchivePanel'
+import { loadArchive, markAnomalySeen, markStageReached, markEndingReached, clearArchive } from './lib/archiveStore'
+import { clock } from './lib/pausableClock'
 import { useGameState } from './hooks/useGameState'
 import { useTypingEngine } from './hooks/useTypingEngine'
 import { useAccuseAnimation } from './hooks/useAccuseAnimation'
@@ -92,8 +95,18 @@ export default function App() {
     },
     onStageComplete: (si: number) => onStageComplete(si),
     onFinalStageWritten: (si: number) => onFinalStageWritten(si),
-    onAnomalyTrigger: (stageId: string, lineId: string) => startAnomaly(stageId, lineId) ?? null,
-    onFixedAnomalyTrigger: (id: string) => getFixedAnomaly(id) ?? null,
+    onAnomalyTrigger: (stageId: string, lineId: string) => {
+      const fired = startAnomaly(stageId, lineId) ?? null
+      // 画面に発火した異変をアーカイブに記録（localStorage 永続）
+      if (fired) setArchiveProgress(markAnomalySeen(fired.id))
+      return fired
+    },
+    onFixedAnomalyTrigger: (id: string) => {
+      const fired = getFixedAnomaly(id) ?? null
+      // 予約発火（デバッグ／固定異変）も発火＝体験済みとしてアーカイブに記録する
+      if (fired) setArchiveProgress(markAnomalySeen(fired.id))
+      return fired
+    },
     getAnomalyTriggerLineId: (id: string) => getAnomalyTriggerLineId(id),
     applyStrikeThrough: (id: string) => applyStrikeThrough(id),
     applyStrikeThroughAll: () => applyStrikeThroughAll(),
@@ -106,6 +119,10 @@ export default function App() {
   }), [addBlock, updateBlock, updateCaption, redactBlock, backspaceBlock, onLineWritten, onStageComplete, onFinalStageWritten, startAnomaly, hasMustFireAnomaly, getFixedAnomaly, getAnomalyTriggerLineId, applyStrikeThrough, applyStrikeThroughAll, applyBloodBleed, startFontShuffle, startTextGlitch, startDarken, unblockAccuse, runEnding])
 
   const engine = useTypingEngine(stages, callbacks)
+
+  // ─── アーカイブ（異変の振り返り） ─────────────────────────────────────────
+  const [archiveOpen, setArchiveOpen] = useState(false)
+  const [archiveProgress, setArchiveProgress] = useState(() => loadArchive())
 
   // ─── 一時停止／再開 ───────────────────────────────────────────────────────
   const [paused, setPaused] = useState(false)
@@ -138,6 +155,22 @@ export default function App() {
   useEffect(() => {
     if (state.phase !== 'writing' && paused) setPaused(false)
   }, [state.phase, paused])
+
+  // 章に入って執筆が始まったら、その章を「到達済み」としてアーカイブに記録
+  useEffect(() => {
+    if (state.phase !== 'writing') return
+    const stage = stages[state.currentStageIndex]
+    if (stage) setArchiveProgress(markStageReached(stage.id))
+  }, [state.phase, state.currentStageIndex])
+
+  // 「この原稿を校了する」ボタンが出る状態（最終章を書き終え・ミスなし）に到達したら記録。
+  // 以降は2週目でも「修正履歴」ボタンを常設する。
+  useEffect(() => {
+    const isFinalStage = state.currentStageIndex === stages.length - 1
+    if (state.phase === 'stage_written' && !state.anomalyMissed && isFinalStage) {
+      setArchiveProgress(markEndingReached())
+    }
+  }, [state.phase, state.anomalyMissed, state.currentStageIndex])
 
   // ─── 開始ボタン ──────────────────────────────────────────────────────────
   const handleStart = useCallback(() => { beginGame() }, [beginGame])
@@ -187,8 +220,8 @@ export default function App() {
   // fontShuffleStart 行を書き終えると fontShuffleActive=true になり、ここから開始する
   useEffect(() => {
     if (!state.fontShuffleActive) return
-    const id = setInterval(() => shuffleFonts(), 120)
-    return () => clearInterval(id)
+    const id = clock.every(() => shuffleFonts(), 120)
+    return () => clock.clear(id)
   }, [state.fontShuffleActive, shuffleFonts])
 
   // ─── 文字化け侵食：開始後、侵食の進行度(0→1)を少しずつ上げていく ──
@@ -199,10 +232,10 @@ export default function App() {
       setGlitchProgress(0)
       return
     }
-    const id = setInterval(() => {
+    const id = clock.every(() => {
       setGlitchProgress((p) => Math.min(0.85, p + 0.05))
     }, 250)
-    return () => clearInterval(id)
+    return () => clock.clear(id)
   }, [state.textGlitchActive])
 
   // phase が 'writing' に変わったらタイピング開始
@@ -243,7 +276,7 @@ export default function App() {
   ]
   const PAGE_PX = 1123  // A4 1ページの高さ
   const mpRunningRef = useRef(false)        // 1フェーズの書き込み中（多重防止）
-  const mpAutoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const mpAutoTimerRef = useRef<number | null>(null)
 
   // 指定行を「15ページ空白 → スムーズスクロール → スクロール完了後にタイピング」で追加する
   const mpTypeLines = useCallback((lines: string[], onDone: () => void) => {
@@ -273,20 +306,20 @@ export default function App() {
       const blockId = `mp-${stamp}-${li}`
       const chars = [...lines[li]]
       let ci = 0
-      const charTimer = setInterval(() => {
+      const charTimer = clock.every(() => {
         updateBlock(blockId, chars[ci])
         ci++
         if (ci >= chars.length) {
-          clearInterval(charTimer)
+          clock.clear(charTimer)
           li++
-          setTimeout(typeLine, 400)
+          clock.after(typeLine, 400)
         }
       }, 70)
     }
 
     // スクロール開始 → スクロール完了（約0.7s）＋1秒待ってからタイピング
-    setTimeout(scrollToTextPage, 60)
-    setTimeout(typeLine, 1760)
+    clock.after(scrollToTextPage, 60)
+    clock.after(typeLine, 1760)
   }, [appendBlocks, updateBlock])
 
   // 次のフェーズへ進む（指摘ボタン or 自動）
@@ -295,7 +328,7 @@ export default function App() {
     const step = stateRef.current.multiPhaseStep
     if (step >= MULTI_PHASE_TEXTS.length) return
     mpRunningRef.current = true
-    if (mpAutoTimerRef.current) { clearTimeout(mpAutoTimerRef.current); mpAutoTimerRef.current = null }
+    if (mpAutoTimerRef.current) { clock.clear(mpAutoTimerRef.current); mpAutoTimerRef.current = null }
     const lines = MULTI_PHASE_TEXTS[step]
     const nextStep = step + 1
     setMultiPhaseStep(nextStep)
@@ -303,7 +336,7 @@ export default function App() {
       mpRunningRef.current = false
       if (nextStep >= MULTI_PHASE_TEXTS.length) {
         // 最終フェーズ完了 → 3秒後、空白ページ含めて下から上へ一気にマーカーを引いて削除
-        setTimeout(() => {
+        clock.after(() => {
           // 対象：異変ブロック＋マルチフェーズで追加したブロック（空白ページ含む）
           const targetIds = stateRef.current.liveContent
             .filter((b) => (b as { _anomalyInstanceId?: string })._anomalyInstanceId || b.id.startsWith('mp-'))
@@ -315,7 +348,7 @@ export default function App() {
           if (paper) paper.scrollTo({ top: paper.scrollHeight, behavior: 'smooth' })
 
           let i = 0
-          const markTimer = setInterval(() => {
+          const markTimer = clock.every(() => {
             const id = orderedBottomUp[i]
             if (id !== undefined) {
               setLiveContent(
@@ -329,23 +362,23 @@ export default function App() {
             }
             i++
             if (i >= orderedBottomUp.length) {
-              clearInterval(markTimer)
+              clock.clear(markTimer)
               // 全部引き終えた → 少し見せてから削除して巻き戻す
-              setTimeout(() => {
+              clock.after(() => {
                 const idSet = new Set(targetIds)
                 setLiveContent(stateRef.current.liveContent.filter((b) => !idSet.has(b.id)))
                 endMultiPhase()
                 finalizeRewind()
                 const stageIdx = stateRef.current.currentStageIndex
                 const resumeLineIdx = stateRef.current.anomalyInstances.find((i2) => i2.isLatest)?.resumeLineIndex ?? stateRef.current.nextLineIndex
-                setTimeout(() => engine.resumeFromLine(stageIdx, resumeLineIdx), 800)
+                clock.after(() => engine.resumeFromLine(stageIdx, resumeLineIdx), 800)
               }, 600)
             }
           }, 40)
         }, 3000)
       } else {
         // 次フェーズの自動進行タイマー（10秒）
-        mpAutoTimerRef.current = setTimeout(() => mpAdvance(), 10000)
+        mpAutoTimerRef.current = clock.after(() => mpAdvance(), 10000)
       }
     })
   }, [mpTypeLines, setMultiPhaseStep, setLiveContent, endMultiPhase, finalizeRewind, engine])
@@ -353,19 +386,36 @@ export default function App() {
   // 「アンタは誰なんだ？」表示完了（accuseBlocked 解除）後、指摘されなければ5秒で自動フェーズ1へ
   useEffect(() => {
     if (state.multiPhaseActive && !state.accuseBlocked && state.multiPhaseStep === 0) {
-      const t = setTimeout(() => mpAdvance(), 5000)
-      return () => clearTimeout(t)
+      const t = clock.after(() => mpAdvance(), 5000)
+      return () => clock.clear(t)
     }
   }, [state.multiPhaseActive, state.accuseBlocked, state.multiPhaseStep, mpAdvance])
 
   // ─── A5-02 ビデオ通話スクリプト ─────────────────────────────────────────
   const vsRunRef = useRef(false)
-  const miseroTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)  // 「見せろ」連投
+  const miseroTimerRef = useRef<number | null>(null)  // 「見せろ」連投
   const miseroBlockRef = useRef<string | null>(null)  // 連投先ブロックID
   const tellNoiseRef = useRef<HTMLAudioElement | null>(null)  // 通話中ループ音
   const stopTellNoise = useCallback(() => {
     if (tellNoiseRef.current) { tellNoiseRef.current.pause(); tellNoiseRef.current = null }
   }, [])
+
+  // A5 系スクリプトの「多重起動防止フラグ」を、対象異変が外れたらリセットする。
+  // これがないと一度発火したフラグが残り、ステージジャンプ等で再発火しても
+  // スクリプト（ビデオ通話／マルチフェーズ／コメント連投）が起動しない。
+  useEffect(() => {
+    if (state.activeAnomalyId !== 'A5-02') {
+      vsRunRef.current = false
+      setVsReady(false)
+    }
+    if (state.activeAnomalyId !== 'A5-01') {
+      mpRunningRef.current = false
+      if (mpAutoTimerRef.current) { clock.clear(mpAutoTimerRef.current); mpAutoTimerRef.current = null }
+    }
+    if (state.activeAnomalyId !== 'A5-03') {
+      blockedSpamRef.current = false
+    }
+  }, [state.activeAnomalyId])
   // 指定行を1文字ずつ追記する（既存 liveContent の末尾に足していく）
   // opts.charMs: 1文字の間隔, opts.style: スタイル, opts.lineGap: 行末の余韻, opts.punctuate: 句読点で止まる
   const vsTypeLines = useCallback((
@@ -386,14 +436,14 @@ export default function App() {
       const step = () => {
         const ch = chars[ci]
         updateBlock(blockId, ch); ci++
-        if (ci >= chars.length) { li++; setTimeout(typeLine, lineGap); return }
+        if (ci >= chars.length) { li++; clock.after(typeLine, lineGap); return }
         // 句読点では少し長く止まる（余韻）
         const pause = opts?.punctuate && /[、。]/.test(ch) ? charMs * 6 : charMs
-        setTimeout(step, pause)
+        clock.after(step, pause)
       }
-      setTimeout(step, charMs)
+      clock.after(step, charMs)
     }
-    setTimeout(typeLine, 300)
+    clock.after(typeLine, 300)
   }, [addBlock, updateBlock])
 
   useEffect(() => {
@@ -402,11 +452,11 @@ export default function App() {
     if (state.activeAnomalyId !== 'A5-02' || !vsReady) return
     vsRunRef.current = true
     // 1) 「そうか。電話か…」（余韻をもって）
-    setTimeout(() => {
+    clock.after(() => {
       vsTypeLines(['そうか。', '電話か・・・。', '電話があったな。'], () => {
         // 2) 通話アイコン赤化 → ローディング → ビデオ表示
         setVideoCallState('loading')
-        setTimeout(() => {
+        clock.after(() => {
           setVideoCallState('on')
           // 通話がつながった効果音 → 続けて通話中ノイズをループ
           try { new Audio('audio/tell_start.mp3').play().catch(() => {}) } catch { /* noop */ }
@@ -416,7 +466,7 @@ export default function App() {
             noise.play().catch(() => {})
             tellNoiseRef.current = noise
           } catch { /* noop */ }
-          setTimeout(() => {
+          clock.after(() => {
             // 3) カメラ表示後の本文（大きめ・0.7倍速・余韻あり）→「見せろ。」連投
             const bigStyle = { fontSize: '20px' }
             vsTypeLines(
@@ -424,20 +474,20 @@ export default function App() {
                 '・・・、ダメだ。',
                 'マイクが壊れてるし、そっちの声も聞こえない。',
                 'もうすぐ書き終わる。',
-                'やっと。',
-                '最後にアンタの顔見せてくれよ。',
+                'やっと完成する。',
+                '・・・、なあ、最後にアンタの顔見せてくれよ。',
                 'ここまでさんざん赤入れしてきた、アンタの顔を。',
                 'なあ。',
               ],
               () => {
                 // 「なあ。」の後2秒止めてから、「見せろ。」を一気に連投開始
-                setTimeout(() => {
+                clock.after(() => {
                   // 指摘可能＋UI赤黒＋ボタン震え（videoFinale）
                   setVideoFinale(true)
                   // カメラ映像を 01→05 の画像に順次切り替え、05 の後はノイズ画面に
                   const frames: Array<0 | 1 | 2 | 3 | 4 | 'noise'> = [0, 1, 2, 3, 4, 'noise']
                   frames.forEach((f, idx) => {
-                    setTimeout(() => setVideoFrame(f), idx * 600)
+                    clock.after(() => setVideoFrame(f), idx * 600)
                   })
                   const blockId = `vs-misero-${Date.now()}`
                   miseroBlockRef.current = blockId
@@ -445,7 +495,7 @@ export default function App() {
                   const seq = [...'見せろ。']
                   let k = 0
                   // 指摘されるまで「見せろ。」を改行なしで連投し続ける（4倍速）
-                  miseroTimerRef.current = setInterval(() => {
+                  miseroTimerRef.current = clock.every(() => {
                     updateBlock(blockId, seq[k % seq.length])
                     k++
                   }, 18)
@@ -460,8 +510,9 @@ export default function App() {
   }, [state.activeAnomalyId, vsReady, vsTypeLines, setVideoCallState, setVideoFinale, setVideoFrame, addBlock, updateBlock])
 
   const handleAccuse = useCallback(() => {
-    // 指摘すると巻き戻って自動再開するため、一時停止表示も解除する
+    // 指摘すると巻き戻って自動再開するため、一時停止表示も解除し、凍結も解く
     setPaused(false)
+    clock.resume()
     const s = stateRef.current
     console.group('%c[ACCUSE] 指摘ボタン押下', 'color:#e91e63;font-weight:bold')
     console.log('phase:', s.phase)
@@ -487,7 +538,7 @@ export default function App() {
     // 「見せろ」連投フェーズの指摘 → 連投停止・白マーカー・削除して即座に元へ戻す
     if (stateRef.current.videoFinale) {
       console.log('→ videoFinale 指摘：連投停止して終了'); console.groupEnd()
-      if (miseroTimerRef.current) { clearInterval(miseroTimerRef.current); miseroTimerRef.current = null }
+      if (miseroTimerRef.current) { clock.clear(miseroTimerRef.current); miseroTimerRef.current = null }
       stopTellNoise()
       animatingRef.current = true
       // 異変ブロック（a5-02-*, vs-*）に白マーカーを引く
@@ -528,7 +579,7 @@ export default function App() {
       if (!blockedSpamRef.current && stateRef.current.activeAnomalyId === 'A5-03') {
         blockedSpamRef.current = true
         let n = 0
-        const timer = setInterval(() => {
+        const timer = clock.every(() => {
           const now = `${String(new Date().getHours()).padStart(2,'0')}:${String(new Date().getMinutes()).padStart(2,'0')}`
           addComment({
             id: `blocked-spam-${Date.now()}-${n}`,
@@ -539,7 +590,7 @@ export default function App() {
             timestamp: now,
           })
           n++
-          if (n >= 30) clearInterval(timer)
+          if (n >= 30) clock.clear(timer)
         }, 200)
       }
       return
@@ -608,28 +659,38 @@ export default function App() {
   }, [engine, buildAccuseComment, runAnimation, finalizeRewind, state.phase, addComment, setLiveContent, mpAdvance, setVideoCallState, setVideoFinale, setAccuseDisabled, stopTellNoise])
 
   // ─── はじめから ──────────────────────────────────────────────────────────
-  const handleReset = useCallback(() => {
+  // 中断（はじめから／章のはじめから／ステージジャンプ）の共通クリーンアップ。
+  // 異変演出の途中で中断しても、フラグ・音・タイトルなどが残らないようにする。
+  const cleanupAnomalyArtifacts = useCallback(() => {
     animatingRef.current = false
     blockedSpamRef.current = false
     vsRunRef.current = false
+    mpRunningRef.current = false
     setVsReady(false)
-    if (miseroTimerRef.current) { clearInterval(miseroTimerRef.current); miseroTimerRef.current = null }
+    if (miseroTimerRef.current) { clock.clear(miseroTimerRef.current); miseroTimerRef.current = null }
+    if (mpAutoTimerRef.current) { clock.clear(mpAutoTimerRef.current); mpAutoTimerRef.current = null }
     stopTellNoise()
+    // 異変で書き換えたタイトルを元に戻す
+    document.title = '新作小説_第一稿'
+  }, [stopTellNoise])
+
+  const handleReset = useCallback(() => {
+    cleanupAnomalyArtifacts()
     engine.stopEngine()
     setShowShare(false)
     setIsReadOnly(false)
     resetGame()
-  }, [engine, resetGame, stopTellNoise])
+  }, [engine, resetGame, cleanupAnomalyArtifacts])
 
   // ─── 章のはじめから：現在のステージの先頭に戻す ──────────────────────────
   const handleRestartStage = useCallback(() => {
-    animatingRef.current = false
+    cleanupAnomalyArtifacts()
     engine.stopEngine()
     const stageIdx = stateRef.current.currentStageIndex
     retryStage()
     // retryStage は writing→writing なので useEffect が発火しない → 明示的に再開
     setTimeout(() => engine.startStage(stageIdx), 100)
-  }, [engine, retryStage])
+  }, [engine, retryStage, cleanupAnomalyArtifacts])
 
   return (
     <GlitchContext.Provider value={glitchProgress}>
@@ -639,6 +700,7 @@ export default function App() {
         saveStatus={state.saveStatus}
         isReadOnly={isReadOnly}
         videoActive={state.videoCallState !== 'none'}
+        onHistory={() => setArchiveOpen(true)}
       />
       <DocumentToolbar
         fontName={state.toolbarFontName}
@@ -674,6 +736,8 @@ export default function App() {
         paused={paused}
         onPauseToggle={handlePauseToggle}
         showShare={showShare}
+        showHistory={archiveProgress.reachedEnding}
+        onHistory={() => setArchiveOpen(true)}
         accuseGlitch={accuseBtnGlitch}
         accuseDisabled={state.accuseDisabled}
       />
@@ -688,6 +752,19 @@ export default function App() {
         </div>
       </div>
     )}
+    <ArchivePanel
+      open={archiveOpen}
+      onClose={() => setArchiveOpen(false)}
+      seenAnomalyIds={archiveProgress.seenAnomalyIds}
+      reachedStageIds={archiveProgress.reachedStageIds}
+      onJumpToStage={(stageIdx) => {
+        cleanupAnomalyArtifacts()
+        engine.stopEngine()
+        debugJumpToStage(stageIdx)
+        // phase が writing→writing で変わらず useEffect が startStage を呼ばないため明示的に開始
+        setTimeout(() => engine.startStage(stageIdx), 100)
+      }}
+    />
     {showPausedFx && (
       <div className="pause-fx" aria-hidden="true">
         <div className="pause-fx-card">
@@ -704,14 +781,15 @@ export default function App() {
     {import.meta.env.DEV && (
       <DebugPanel
         state={state}
-        onJumpToStage={debugJumpToStage}
-        onJumpToEnding={() => { engine.stopEngine(); debugJumpToEnding() }}
+        onJumpToStage={(i) => { cleanupAnomalyArtifacts(); debugJumpToStage(i) }}
+        onJumpToEnding={() => { cleanupAnomalyArtifacts(); engine.stopEngine(); debugJumpToEnding() }}
         onReserveAnomaly={engine.reserveAnomaly}
         onStopEngine={engine.stopEngine}
         onStartStage={engine.startStage}
         onPause={engine.pause}
         onResume={engine.resumeFromCurrent}
         onSetSpeed={engine.setSpeed}
+        onResetArchive={() => setArchiveProgress(clearArchive())}
       />
     )}
     </GlitchContext.Provider>

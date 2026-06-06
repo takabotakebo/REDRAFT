@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { stages } from '../data/stages'
 import { anomalies } from '../data/anomalies'
 import type { GameState } from '../types/game'
@@ -13,16 +13,32 @@ type Props = {
   onPause: () => void
   onResume: () => void
   onSetSpeed: (multiplier: number) => void
+  onResetArchive: () => void
 }
 
 const SPEED_OPTIONS = [1, 2, 4, 8]
 
-export function DebugPanel({ state, onJumpToStage, onJumpToEnding, onReserveAnomaly, onStopEngine, onStartStage, onPause, onResume, onSetSpeed }: Props) {
+export function DebugPanel({ state, onJumpToStage, onJumpToEnding, onReserveAnomaly, onStopEngine, onStartStage, onPause, onResume, onSetSpeed, onResetArchive }: Props) {
   const [open, setOpen] = useState(false)
   const [alert, setAlert] = useState('')
   const [reserved, setReserved] = useState<string | null>(null)
   const [paused, setPaused] = useState(false)
   const [speed, setSpeed] = useState(1)
+
+  // 「D」キーでデバッグパネルを開閉する（スクリーンショット撮影用）。
+  // 入力欄にフォーカスがあるとき・修飾キー併用時は無視する。
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey || e.altKey) return
+      const el = document.activeElement
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || (el as HTMLElement).isContentEditable)) return
+      if (e.key === 'd' || e.key === 'D') {
+        setOpen((v) => !v)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   const currentStage = stages[state.currentStageIndex]
 
@@ -92,10 +108,13 @@ export function DebugPanel({ state, onJumpToStage, onJumpToEnding, onReserveAnom
       return idxA - idxB
     })
 
+  // 閉じているときは何も描画しない（「D」キーで開く）。スクリーンショットに写り込まない
+  if (!open) return null
+
   return (
     <div className="debug-panel-wrap">
-      <button className="debug-toggle" onClick={() => setOpen((v) => !v)}>
-        {open ? '▼ DEBUG' : '▲ DEBUG'}
+      <button className="debug-toggle" onClick={() => setOpen(false)}>
+        ▼ DEBUG（D で閉じる）
       </button>
 
       {open && (
@@ -155,6 +174,20 @@ export function DebugPanel({ state, onJumpToStage, onJumpToEnding, onReserveAnom
                 ))}
               </div>
             </div>
+          </div>
+
+          {/* アーカイブ操作 */}
+          <div className="debug-section">
+            <div className="debug-section-title">アーカイブ</div>
+            <button
+              className="debug-btn-stage debug-btn-ending"
+              onClick={() => {
+                onResetArchive()
+                showAlert('アーカイブをリセットしました')
+              }}
+            >
+              アーカイブをリセット
+            </button>
           </div>
 
           {/* 異変一覧 */}

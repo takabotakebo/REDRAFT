@@ -5,6 +5,7 @@ import { stages } from '../data/stages'
 import { anomalies } from '../data/anomalies'
 import { editorComments } from '../data/comments'
 import { selectAnomaly, resetUsedAnomalies } from '../lib/anomalySelector'
+import { clock } from '../lib/pausableClock'
 
 // ステージ開始直後に出る異変（triggerAtStageStart）を選ぶときの特殊 lineId
 export const STAGE_START_LINE_ID = '__stage_start__'
@@ -307,7 +308,7 @@ export function useGameState() {
       setState((s) => ({ ...s, docTitle: headerEff.title!, saveStatus: '保存できません' }))
       document.title = headerEff.title!
       if (headerEff.revertAfterMs && headerEff.revertAfterMs > 0) {
-        setTimeout(() => {
+        clock.after(() => {
           setState((s) => ({ ...s, docTitle: '新作小説_第一稿' }))
           document.title = '新作小説_第一稿'
         }, headerEff.revertAfterMs)
@@ -561,7 +562,7 @@ export function useGameState() {
       .reverse()
     let i = 0
     const STEP_MS = 70  // 1行ごとの間隔
-    const timer = setInterval(() => {
+    const timer = clock.every(() => {
       const id = targetIds[i++]
       if (id !== undefined) {
         setState((s) => ({
@@ -571,7 +572,7 @@ export function useGameState() {
           ),
         }))
       }
-      if (i >= targetIds.length) clearInterval(timer)
+      if (i >= targetIds.length) clock.clear(timer)
     }, STEP_MS)
   }, [])
 

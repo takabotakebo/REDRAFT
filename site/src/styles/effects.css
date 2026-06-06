@@ -31,6 +31,15 @@
   color: #fff;
 }
 
+/* 特大赤黒文字（A3-21）：lineHeight を詰めているため背景が文字より低くなる。
+   文字レイアウトには一切触れず、box-shadow（レイアウト非影響）で背景を
+   上下に伸ばして文字の高さに合わせる */
+.huge-red-text.line-selected {
+  box-shadow: 0 0.14em 0 #9b0d12, 0 -0.14em 0 #9b0d12;
+  /* インラインの赤黒 color に勝たせて、選択時は全ブロックを白文字反転させる */
+  color: #fff !important;
+}
+
 /* 白マーカー（videoFinale の削除時） */
 .line-selected.line-white {
   background-color: transparent;

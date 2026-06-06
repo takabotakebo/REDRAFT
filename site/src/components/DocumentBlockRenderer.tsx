@@ -102,8 +102,17 @@ export function DocumentBlockRenderer({ block, cursorClass }: Props) {
 
     // 行まるごと選択（起点より上の行）：行末の余白まで反転
     if (block._fullSelected) {
+      const markCls = `line-selected${block._whiteMark ? ' line-white' : ''}`
+      // inlineChain のブロックは選択時も改行させず span のまま（前のブロックと同じ行に続ける）
+      if (block.inlineChain) {
+        return (
+          <span className={`doc-text-inline ${cls} ${markCls}`} style={style}>
+            {block.text}
+          </span>
+        )
+      }
       return (
-        <p className={`${cls} line-selected${block._whiteMark ? ' line-white' : ''}`} style={style}>
+        <p className={`${cls} ${markCls}`} style={style}>
           {block.text}
         </p>
       )

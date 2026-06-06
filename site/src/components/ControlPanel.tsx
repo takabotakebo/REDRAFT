@@ -15,11 +15,14 @@ type Props = {
   paused: boolean
   onPauseToggle: () => void
   showShare: boolean
+  // 「この原稿を校了する」に一度でも到達した人に出す「修正履歴」ボタン
+  showHistory: boolean
+  onHistory: () => void
   accuseGlitch?: boolean
   accuseDisabled?: boolean
 }
 
-export function ControlPanel({ phase, isFinalStage, anomalyMissed, onAccuse, onConfirm, onRetry, onReset, onRestartStage, paused, onPauseToggle, showShare, accuseGlitch, accuseDisabled }: Props) {
+export function ControlPanel({ phase, isFinalStage, anomalyMissed, onAccuse, onConfirm, onRetry, onReset, onRestartStage, paused, onPauseToggle, showShare, showHistory, onHistory, accuseGlitch, accuseDisabled }: Props) {
   const g = useGlitch()
   const shareText = encodeURIComponent('指摘し続けました。原稿は完成しましたか？ #REDRAFT')
   const shareUrl = encodeURIComponent(window.location.origin + '/intro.html')
@@ -49,6 +52,17 @@ export function ControlPanel({ phase, isFinalStage, anomalyMissed, onAccuse, onC
 
       {/* 中央：状態によって切り替え */}
       <div className="control-center">
+        {/* 校了に一度でも到達した人：中央ボタンの左に「修正履歴」ボタンを常設 */}
+        {showHistory && (
+          <button className="btn-history" onClick={onHistory} title="赤入れ修正履歴">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M3 3v5h5" />
+              <path d="M3.05 13A9 9 0 1 0 6 5.3L3 8" />
+              <path d="M12 7v5l3 2" />
+            </svg>
+            <span>{glitchText('修正履歴', g)}</span>
+          </button>
+        )}
         {/* phase === 'idle' のときは下部にボタンを出さない（起動ポップアップで開始する） */}
         {phase === 'writing' && (
           <div className="accuse-group">

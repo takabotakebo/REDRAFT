@@ -3,6 +3,7 @@ import type { Stage, TypingConfig } from '../types/game'
 import type { DocumentBlock } from '../types/document'
 import type { Anomaly } from '../types/anomaly'
 import { buildTasksFromBlocks } from '../lib/typingQueue'
+import { clock } from '../lib/pausableClock'
 import { STAGE_START_LINE_ID } from './useGameState'
 
 const PHASE_CONFIG: Record<string, TypingConfig> = {
@@ -55,8 +56,7 @@ type Callbacks = {
 
 function runTasks(
   tasks: ReturnType<typeof buildTasksFromBlocks>,
-  timerRef: React.MutableRefObject<ReturnType<typeof setTimeout> | null>,
-  pausedRef: React.MutableRefObject<boolean>,
+  timerRef: React.MutableRefObject<number | null>,
   stoppedRef: React.MutableRefObject<boolean>,
   callbacks: Pick<Callbacks, 'onAddBlock' | 'onUpdateChar' | 'onUpdateCaption' | 'onRedact' | 'onBackspace'>,
   onDone: () => void,
@@ -66,26 +66,28 @@ function runTasks(
   let idx = 0
   function next() {
     if (!isAlive()) return
-    if (stoppedRef.current || pausedRef.current) return
+    if (stoppedRef.current) return
     if (idx >= tasks.length) { onDone(); return }
     const t = tasks[idx++]
+    // 各タスクは clock.after で待つ。clock を pause すると「時が止まり」、
+    // resume で残り時間から続く。pausedRef は stop/巻き戻しの最終ガードに使う。
     if (t.kind === 'char') {
       callbacks.onUpdateChar(t.blockId, t.char)
-      timerRef.current = setTimeout(next, t.pause)
+      timerRef.current = clock.after(next, t.pause)
     } else if (t.kind === 'captionChar') {
       callbacks.onUpdateCaption(t.blockId, t.char)
-      timerRef.current = setTimeout(next, t.pause)
+      timerRef.current = clock.after(next, t.pause)
     } else if (t.kind === 'redact') {
       callbacks.onRedact(t.blockId)
-      timerRef.current = setTimeout(next, 0)
+      timerRef.current = clock.after(next, 0)
     } else if (t.kind === 'backspace') {
       callbacks.onBackspace(t.blockId)
-      timerRef.current = setTimeout(next, t.pause)
+      timerRef.current = clock.after(next, t.pause)
     } else if (t.kind === 'addBlock') {
       callbacks.onAddBlock(t.block)
-      timerRef.current = setTimeout(next, 0)
+      timerRef.current = clock.after(next, 0)
     } else if (t.kind === 'wait') {
-      timerRef.current = setTimeout(next, t.ms)
+      timerRef.current = clock.after(next, t.ms)
     } else {
       next()
     }
@@ -94,7 +96,7 @@ function runTasks(
 }
 
 export function useTypingEngine(stages: Stage[], callbacks: Callbacks) {
-  const timerRef    = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const timerRef    = useRef<number | null>(null)
   const pausedRef   = useRef(true)
   const stoppedRef  = useRef(false)
   // 走行世代。新しいループを起動するたびに +1。古い世代のループは自滅する
@@ -132,7 +134,7 @@ export function useTypingEngine(stages: Stage[], callbacks: Callbacks) {
   }, [])
 
   const clearTimer = () => {
-    if (timerRef.current !== null) { clearTimeout(timerRef.current); timerRef.current = null }
+    if (timerRef.current !== null) { clock.clear(timerRef.current); timerRef.current = null }
   }
 
   // ─── 通常ステージ：lineIdx から書き始める ─────────────────────────────────
@@ -168,7 +170,7 @@ export function useTypingEngine(stages: Stage[], callbacks: Callbacks) {
           cursorRef.current = { stageIdx, lineIdx }
         }
         // 異変を終えて正常の文章を書き始める前に必ず1秒待つ（全異変共通）
-        timerRef.current = setTimeout(onDone, ANOMALY_TO_NORMAL_DELAY_MS)
+        timerRef.current = clock.after(onDone, ANOMALY_TO_NORMAL_DELAY_MS)
       }
 
       // ブロック列を、特別な合図（fontShuffleStart / bloodBleedStart / trailingPause）の
@@ -187,7 +189,7 @@ export function useTypingEngine(stages: Stage[], callbacks: Callbacks) {
         const end = cut >= 0 ? cut + 1 : blocks.length
         const group = blocks.slice(from, end)
         const tasks = buildTasksFromBlocks(group, config)
-        runTasks(tasks, timerRef, pausedRef, stoppedRef, callbacks, () => {
+        runTasks(tasks, timerRef, stoppedRef, callbacks, () => {
           const b = cut >= 0 ? blocks[cut] : null
           if (b && b.type === 'text' && b.fontShuffleStart) callbacks.onFontShuffleStart()
           if (b && b.type === 'text' && b.bloodBleedStart) callbacks.onBloodBleedStart()
@@ -195,11 +197,11 @@ export function useTypingEngine(stages: Stage[], callbacks: Callbacks) {
           if (b && b.type === 'text' && b.darkenStart) callbacks.onDarkenStart()
           const extra = b && b.type === 'text' && b.trailingPause ? b.trailingPause : 0
           if (end >= blocks.length) {
-            if (extra > 0) { timerRef.current = setTimeout(finishAnomaly, extra); return }
+            if (extra > 0) { timerRef.current = clock.after(finishAnomaly, extra); return }
             finishAnomaly()
             return
           }
-          timerRef.current = setTimeout(() => writeBlocksFrom(blocks, end), extra)
+          timerRef.current = clock.after(() => writeBlocksFrom(blocks, end), extra)
         }, isAlive)
       }
 
@@ -210,14 +212,14 @@ export function useTypingEngine(stages: Stage[], callbacks: Callbacks) {
         // 全テキスト行（過去ステージ含む）を下から上へ順に塗りつぶす。
         // ある程度塗りが進んでから「もう書けない。」を書き始める
         callbacks.applyStrikeThroughAll()
-        timerRef.current = setTimeout(writeAnomalyBlocks, 900)
+        timerRef.current = clock.after(writeAnomalyBlocks, 900)
       } else if (anomaly.strikeThroughLineId) {
         const ids = Array.isArray(anomaly.strikeThroughLineId)
           ? anomaly.strikeThroughLineId
           : [anomaly.strikeThroughLineId]
         ids.forEach((id) => callbacks.applyStrikeThrough(id))
         // 打ち消し線アニメ（約0.12s）を見せてから続きを書き始める
-        timerRef.current = setTimeout(writeAnomalyBlocks, 250)
+        timerRef.current = clock.after(writeAnomalyBlocks, 250)
       } else {
         writeAnomalyBlocks()
       }
@@ -241,7 +243,7 @@ export function useTypingEngine(stages: Stage[], callbacks: Callbacks) {
       // 正常行のみ「迷い（書いて消す）」演出を有効化
       const tasks = buildTasksFromBlocks([line.block], config, true)
 
-      runTasks(tasks, timerRef, pausedRef, stoppedRef, callbacks, () => {
+      runTasks(tasks, timerRef, stoppedRef, callbacks, () => {
         if (!isAlive()) return
         callbacks.onLineWritten(stageIdx, lineIdx)
         const writtenLineId = line.id
@@ -267,7 +269,7 @@ export function useTypingEngine(stages: Stage[], callbacks: Callbacks) {
           }
           // 予約中はトリガー行に着くまで他の異変を一切発火させず素通りする
           // （途中で別の異変が出ると予約異変まで到達できないため）
-          timerRef.current = setTimeout(nextLine, config.blockPause)
+          timerRef.current = clock.after(nextLine, config.blockPause)
           return
         }
 
@@ -287,7 +289,7 @@ export function useTypingEngine(stages: Stage[], callbacks: Callbacks) {
         // カモフラージュ：正常文でもたまに少し書くのを止める
         // （異変後の1秒待機を「作者がときどき手を止める」ものに見せかける）
         const extraPause = Math.random() < NORMAL_PAUSE_PROBABILITY ? NORMAL_PAUSE_MS : 0
-        timerRef.current = setTimeout(nextLine, config.blockPause + extraPause)
+        timerRef.current = clock.after(nextLine, config.blockPause + extraPause)
       }, isAlive)
     }
 
@@ -306,7 +308,7 @@ export function useTypingEngine(stages: Stage[], callbacks: Callbacks) {
       nextLine()
     }
 
-    timerRef.current = setTimeout(startFirstStep, startLineIdx === 0 ? 600 : 300)
+    timerRef.current = clock.after(startFirstStep, startLineIdx === 0 ? 600 : 300)
   }, [stages, callbacks])
 
   // ─── 外部 API ────────────────────────────────────────────────────────────
@@ -314,9 +316,10 @@ export function useTypingEngine(stages: Stage[], callbacks: Callbacks) {
   /** ステージを最初から開始 */
   const startStage = useCallback((stageIdx: number) => {
     console.log('%c[ENGINE] startStage(%d) stageId=%s', 'color:#009688;font-weight:bold', stageIdx, stages[stageIdx]?.id)
-    // 既存ループを確実に殺す（世代+1）＋タイマー停止
+    // 既存ループを確実に殺す（世代+1）＋タイマー停止。凍結中なら解除して開始する
     generationRef.current++
     clearTimer()
+    clock.resume()
     stoppedRef.current = false
     // 新しいステージ開始時にそのステージの異変フラグをリセット
     anomalyEverFiredRef.current[stageIdx] = false
@@ -326,9 +329,10 @@ export function useTypingEngine(stages: Stage[], callbacks: Callbacks) {
   /** 指摘後：lineIdx から再開（異変ブロックはすでに削除済み） */
   const resumeFromLine = useCallback((stageIdx: number, lineIdx: number) => {
     console.log('%c[ENGINE] resumeFromLine(stage=%d, line=%d) stageId=%s', 'color:#4caf50;font-weight:bold', stageIdx, lineIdx, stages[stageIdx]?.id)
-    // 既存ループを確実に殺す（世代+1）＋タイマー停止
+    // 既存ループを確実に殺す（世代+1）＋タイマー停止。凍結中なら解除して再開する
     generationRef.current++
     clearTimer()
+    clock.resume()
     stoppedRef.current = false
     const stage = stages[stageIdx]
     if (!stage) return
@@ -337,16 +341,25 @@ export function useTypingEngine(stages: Stage[], callbacks: Callbacks) {
     runFromLine(stageIdx, lineIdx)
   }, [stages, runFromLine])
 
-  // pause/stop 時に世代を上げ、走行中の全ループを確実に無効化する
-  const pause      = useCallback(() => { generationRef.current++; pausedRef.current = true;  clearTimer() }, [])
-  const stopEngine = useCallback(() => { generationRef.current++; stoppedRef.current = true; clearTimer() }, [])
+  // 一時停止：clock を凍結して「すべての時を止める」。ループは殺さず、
+  // 走行中の全タイマー（タイピング・異変ブロック・固定異変・演出）が残り時間ごと止まる。
+  const pause = useCallback(() => { clock.pause() }, [])
+  // stop 時は世代を上げて走行中の全ループを確実に無効化する（巻き戻し・ステージ切替用）
+  const stopEngine = useCallback(() => {
+    generationRef.current++
+    stoppedRef.current = true
+    clearTimer()
+    // 走行中・予約中の全タイマー（App 側の固定異変演出含む）を一掃し、
+    // 前ステージの予約タイマーが次ステージで暴発するのを防ぐ。
+    clock.clearAll()
+    // 停止時は凍結も解除しておく（次の startStage が clock 上で正常に走るように）
+    clock.resume()
+  }, [])
 
-  /** デバッグ用：現在の行から執筆を再開する（pause で止めた位置から） */
+  /** 一時停止を解除し、止めた位置から時を進める（clock の凍結を解くだけ） */
   const resumeFromCurrent = useCallback(() => {
-    const { stageIdx, lineIdx } = cursorRef.current
-    stoppedRef.current = false
-    runFromLine(stageIdx, lineIdx)
-  }, [runFromLine])
+    clock.resume()
+  }, [])
 
   useEffect(() => () => clearTimer(), [])
 
