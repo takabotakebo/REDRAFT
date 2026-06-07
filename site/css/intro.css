@@ -127,6 +127,12 @@ a { color: inherit; text-decoration: none; }
 .z-quote-name { font-weight: 700; color: #e7e9ea; }
 .z-quote-handle, .z-quote-time { color: #71767b; }
 .z-quote-sep { color: #71767b; }
+.z-quote-body {
+  color: #e7e9ea;
+  font-size: 15px;
+  line-height: 1.5;
+  margin: 2px 0 4px;
+}
 .z-quote-url {
   color: #1d9bf0;
   font-size: 15px;
